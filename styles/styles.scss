@@ -1,3 +1,12 @@
-body {
-    background: white;
+@import 'colors';
+@import 'fonts';
+
+
+// GLOBAL
+html, body {
+    font-size: $body_size;
+    font-family: $main_font;
+    background: $white_100;
 }
+
+
