@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "author": "Jessai Maya<maya.jessai@gmail.com>",
+  "name": "MemoryGame",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "rimraf dist/ && trunk build",
+    "start": "rimraf dist/ && trunk serve"
+  },
+  "devDependencies": {
+    "postcss-cli": "^9.0.2",
+    "rimraf": "^3.0.2",
+    "sass": "^1.43.4"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.3.11",
+    "sanitize.css": "^13.0.0"
+  }
+}
