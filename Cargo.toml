@@ -1,5 +1,5 @@
 [package]
-name = "MemoryGame"
+name = "memory_game"
 version = "0.1.0"
 description = "FrontendMentor | MemoryGame challenge"
 authors = ["Jessai <maya.jessai+@gmail.com>"]

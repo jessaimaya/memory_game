@@ -1,12 +1,133 @@
+@use "sass:color";
 @import 'colors';
 @import 'fonts';
 
+$min_tablet: 768px;
+$max_tablet: 1439px;
+$max_phone: 767px;
+$min_desktop: 1440px;
 
 // GLOBAL
-html, body {
+* {
     font-size: $body_size;
     font-family: $main_font;
+    font-weight: bold;
+}
+
+html, body {
+    font-size: $body_size;
     background: $white_100;
 }
 
+h1 {
+    font-size: $h1_size;
+}
+h2 {
+    font-size: $h2_size;
+}
+h3 {
+    font-size: $h3_size;
+}
 
+.bg_orange{
+    background: $orange;
+}
+.bg_gray_100{
+    background: $gray_100;
+}
+.bg_gray_200{
+    background: $gray_200;
+}
+.bg_gray_300{
+    background: $gray_300;
+}
+.bg_white_100{
+    background: $white_200;
+}
+.bg_white_200{
+    background: $white_200;
+}
+.bg_blue_100{
+    background: $blue_100;
+}
+.bg_blue_200{
+    background: $blue_200;
+}
+
+// UI
+.btn {
+    font-size: 1.5rem;
+    padding: 0.5rem;
+    border: none;
+    color: $white_100;
+    border-radius: 3rem;
+    cursor: pointer;
+    justify-content: center;
+    display: flex;
+    flex-grow: 1;
+    margin: 0 1rem;
+    &:first-of-type {
+        margin-left: 0;
+    }
+    &:last-of-type {
+        margin-right: 0;
+    }
+    &:hover, &.selected {
+        background: $gray_200;
+    }
+    &.bg_orange:hover {
+        background: $orange_100;
+    }
+    &.big {
+        font-size: 2rem;
+    }
+}
+
+// Initial
+.initial {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content:center;
+
+    background: $gray_300;
+
+    &_title {
+        color: $white_100;
+    }
+}
+.config {
+    width: 30%;
+    margin: 4rem 1rem;
+    padding: 3.1rem;
+    border-radius: 20px;
+    background: $white_100;
+    &_label {
+        color: $blue_200;
+    }
+    .row {
+        display: flex;
+        flex-direction: column;
+        margin: 1.3rem 0;
+        &:first-of-type{
+            margin-top: 0;
+        }
+        &:last-of-type {
+            margin-bottom: 0;
+        }
+    }
+    &_options {
+        display: flex;
+        justify-content: space-between;
+    }
+    @media (min-width: $max_phone) and (max-width: $max_tablet) {
+        width: 50%;
+        padding: 2.1rem;
+    }
+    @media (max-width: $max_phone) {
+        width: 95%;
+        padding: 1.1rem 0.5rem;
+    }
+}
