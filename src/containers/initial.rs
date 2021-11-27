@@ -1,14 +1,15 @@
-use futures_signals::signal::{SignalExt};
-use dominator::{Dom, html, clone, events};
+use dominator::{clone, events, html, Dom};
+use futures_signals::signal::SignalExt;
+use std::sync::Arc;
 
-use crate::{App, GameStates, Config, GameTheme};
+use crate::{App, Config, GameStates, GameTheme };
 
 pub struct InitialScreen;
 
 impl InitialScreen {
-    pub fn render(&self, app: &App) -> Dom {
+    pub fn render(&self, app: Arc<App>) -> Dom {
         let base = "initial";
-        html!{"section", {
+        html! {"section", {
             .class(base)
             .visible_signal(app.state().map(|s| s == GameStates::Initial))
             .children(&mut [
@@ -21,15 +22,15 @@ impl InitialScreen {
         }}
     }
 
-    pub fn render_config(&self, app: &App) -> Dom {
+    pub fn render_config(&self, app: Arc<App>) -> Dom {
         let base = "config";
         let number_selected = app.config.signal_ref(|val| val.theme == GameTheme::Numbers);
         let icons_selected = app.config.signal_ref(|val| val.theme == GameTheme::Icons);
 
-        let size4_selected = app.config.signal_ref(|val| val.size == 4);
-        let size6_selected = app.config.signal_ref(|val| val.size == 6);
+        let size4_selected = app.config.signal_ref(|val| val.size == 16);
+        let size6_selected = app.config.signal_ref(|val| val.size == 36);
 
-        html!{"div",{
+        html! {"div",{
             .class(base)
             .children(&mut [
                       html!("div", {
@@ -133,8 +134,8 @@ impl InitialScreen {
                                         .class_signal("selected", size4_selected)
                                         .class("bg_gray_100")
                                         .text("4x4")
-                                        .event(clone!(app => move |_: events::Click| {
-                                            app.config.replace_with(|cfg| Config{ size: 4, ..*cfg});
+                                        .event(clone!(app => move |c: events::Click| {
+                                            App::change_size(app.clone(), 16);
                                         }))
                                     }},
                                     html!{"button", {
@@ -143,7 +144,7 @@ impl InitialScreen {
                                         .class("bg_gray_100")
                                         .text("6x6")
                                         .event(clone!(app => move |_: events::Click| {
-                                            app.config.replace_with(|cfg| Config{ size: 6, ..*cfg});
+                                            App::change_size(app.clone(), 36);
                                         }))
                                     }}
                                 ])

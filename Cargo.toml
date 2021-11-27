@@ -12,6 +12,7 @@ edition = "2018"
 lto = true
 codegen-units = 1
 opt-level = 3  # 3 => fast, s/z => small
+debug = true
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-O4"]  # O4 => fast, Oz/Os => small
@@ -32,6 +33,7 @@ serde = {version = "1.0.130", features = ["derive"] }
 wasm-bindgen-futures = "0.4.28"
 serde_derive = "1.0.130"
 futures = "0.3.17"
+wasm-logger = "0.2.0"
 
 [dependencies.web-sys]
 version = "0.3.55"

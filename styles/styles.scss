@@ -57,7 +57,7 @@ h3 {
 // UI
 .btn {
     font-size: 1.5rem;
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     border: none;
     color: $white_100;
     border-radius: 3rem;
@@ -65,6 +65,7 @@ h3 {
     justify-content: center;
     display: flex;
     flex-grow: 1;
+    align-items: center;
     margin: 0 1rem;
     &:first-of-type {
         margin-left: 0;
@@ -124,6 +125,50 @@ h3 {
     }
     @media (min-width: $max_phone) and (max-width: $max_tablet) {
         width: 50%;
+        padding: 2.1rem;
+    }
+    @media (max-width: $max_phone) {
+        width: 95%;
+        padding: 1.1rem 0.5rem;
+    }
+}
+
+// GAME
+.game {
+    width: 70%;
+    display: flex;
+    margin: 0 auto;
+    flex-direction: column;
+    justify-content: center;
+
+    &_top {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row;
+    }
+    &_options {
+        display: flex;
+        justify-content: end;
+        align-items: center;
+    } 
+
+    &_board {
+        width: 80%;
+        display: grid;
+        align-self: center;
+        &__four {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+        }
+        &__six {
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+        }
+    }
+
+    @media (min-width: $max_phone) and (max-width: $max_tablet) {
+        width: 70%;
         padding: 2.1rem;
     }
     @media (max-width: $max_phone) {
