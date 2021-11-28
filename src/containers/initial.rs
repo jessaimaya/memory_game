@@ -134,7 +134,7 @@ impl InitialScreen {
                                         .class_signal("selected", size4_selected)
                                         .class("bg_gray_100")
                                         .text("4x4")
-                                        .event(clone!(app => move |c: events::Click| {
+                                        .event(clone!(app => move |_: events::Click| {
                                             App::change_size(app.clone(), 16);
                                         }))
                                     }},

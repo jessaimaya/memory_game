@@ -34,6 +34,8 @@ wasm-bindgen-futures = "0.4.28"
 serde_derive = "1.0.130"
 futures = "0.3.17"
 wasm-logger = "0.2.0"
+getrandom = { version = "0.2.3", features =["js"] }
+rand = "0.8.4"
 
 [dependencies.web-sys]
 version = "0.3.55"

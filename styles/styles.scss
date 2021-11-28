@@ -157,13 +157,22 @@ h3 {
         width: 80%;
         display: grid;
         align-self: center;
+        grid-auto-rows: 1fr;
+        gap: 1rem;
+        justify-content: center;
         &__four {
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             grid-template-rows: repeat(4, 1fr);
+            & .card_value {
+                font-size: 56px;
+            }
         }
         &__six {
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             grid-template-rows: repeat(6, 1fr);
+            & .card_value {
+                font-size: 44px;
+            }
         }
     }
 
@@ -174,5 +183,32 @@ h3 {
     @media (max-width: $max_phone) {
         width: 95%;
         padding: 1.1rem 0.5rem;
+    }
+}
+
+.card {
+    width: 5rem;
+    height: 5rem;
+    display: flex;
+    background: $gray_200;
+    color: $white_100;
+    text-align: center;
+    border-radius: 10rem;
+    position: relative;
+    justify-content: center;
+    align-items: center;
+}
+
+.cell {
+    display: flex;
+    justify-content: center;
+    & .card_value {
+        display:none;
+    }
+    &.selected .card {
+        background: $orange;
+    }
+    &.selected .card_value {
+        display: inline;
     }
 }

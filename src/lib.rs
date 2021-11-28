@@ -1,5 +1,6 @@
+use rand::{thread_rng, Rng};
+use core::cmp::Ordering;
 use dominator::{clone, events, html, Dom};
-use futures::future::ready;
 use futures_signals::{
     signal::{Mutable, Signal, SignalExt},
     signal_vec::{MutableVec, SignalVecExt},
@@ -31,12 +32,12 @@ pub struct Config {
     pub size: usize,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive( Debug)]
 pub struct Card {
     value: usize,
     playable: bool,
     hidden: bool,
-    selected: bool,
+    selected: Mutable<bool>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -68,8 +69,13 @@ impl Card {
             value,
             playable: true,
             hidden: true,
-            selected: false,
+            selected: Mutable::new(false),
         }
+    }
+
+    pub fn toggle_selection(card: Arc<Self>) {
+        let prev = card.selected.get_cloned();
+        card.selected.set(!prev);
     }
 }
 
@@ -86,7 +92,8 @@ impl App {
         let players = MutableVec::new();
 
         for i in 0..cfg.size {
-            cards.lock_mut().push_cloned(Arc::new(Card::new(i)));
+            let ind = i % (cfg.size / 2);
+            cards.lock_mut().push_cloned(Arc::new(Card::new(ind)));
         }
 
         for _ in 0..cfg.players {
@@ -122,9 +129,9 @@ impl App {
         app.cards.lock_mut().clear();
 
         for i in 0..size {
-            app.cards.lock_mut().push_cloned(Arc::new(Card::new(i)));
+            let ind = i % (size / 2);
+            app.cards.lock_mut().push_cloned(Arc::new(Card::new(ind)));
         }
-
 
     }
 
@@ -184,12 +191,36 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                         format!("{}_board__six",base),
                         app.config.signal_cloned().map(|c| c.size == 36))
                     .children_signal_vec(
-                        app.cards.signal_vec_cloned().map(
+                        app.cards.signal_vec_cloned()
+                        .sort_by_cloned(|_,_| {
+                            let mut rng = thread_rng();
+                            match rng.gen_bool(1.0 / 3.0) {
+                                true => Ordering::Less,
+                                false => Ordering::Greater,
+                            }
+                        })
+                        .map(
                             clone!(
                                 app => move |card| {
+                                    let c = card.clone();
                                     html!{"div", {
-                                        .class("card")
-                                        .text(&format!("{}", card.value)) 
+                                        .class("cell")
+                                        .class_signal("selected", c.selected.signal_cloned().map(|selected| selected))
+                                        .event(clone!(app => move |_:events::Click| {
+                                            Card::toggle_selection(c.clone());
+                                        }))
+                                        .children(&mut [
+                                            html!{"div", {
+                                                .class("card")
+                                                    .children(&mut[
+                                                        html!{"span", {
+                                                            .class("card_value")
+                                                            .text(&format!("{}", card.value)) 
+
+                                                        }}
+                                                    ])
+                                            }}
+                                        ])
                                     }}
                                 }
                             )
