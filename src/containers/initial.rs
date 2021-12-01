@@ -1,8 +1,11 @@
 use dominator::{clone, events, html, Dom};
-use futures_signals::signal::SignalExt;
+use futures_signals::{
+    signal::SignalExt,
+    signal_vec::{MutableVec, SignalVecExt},
+};
 use std::sync::Arc;
 
-use crate::{App, Config, GameStates, GameTheme };
+use crate::{App, Config, GameStates, GameTheme};
 
 pub struct InitialScreen;
 
@@ -165,7 +168,7 @@ impl InitialScreen {
                                         .class("bg_orange")
                                         .text("Start Game")
                                         .event(clone!(app => move |_: events::Click| {
-                                            app.state.replace_with(|_state| GameStates::Playing);
+                                            App::go_play(app.clone());
                                         }))
                                     }}
                                 ])

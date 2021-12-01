@@ -1,16 +1,30 @@
-use rand::{thread_rng, Rng};
 use core::cmp::Ordering;
 use dominator::{clone, events, html, Dom};
+use futures::future::ready;
 use futures_signals::{
     signal::{Mutable, Signal, SignalExt},
     signal_vec::{MutableVec, SignalVecExt},
 };
+use rand::{thread_rng, Rng};
 use std::default::Default;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 mod components;
 mod containers;
+
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub enum CardState {
+    Hidden,
+    Shown,
+    Selected,
+}
+
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub enum PlayerState {
+    Iddle,
+    Playing,
+}
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub enum GameStates {
@@ -32,17 +46,18 @@ pub struct Config {
     pub size: usize,
 }
 
-#[derive( Debug)]
+#[derive(Debug)]
 pub struct Card {
+    id: u8,
     value: usize,
-    playable: bool,
-    hidden: bool,
-    selected: Mutable<bool>,
+    state: Mutable<CardState>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Player {
-    score: u8,
+    id: u8,
+    score: Mutable<u32>,
+    state: Mutable<PlayerState>,
 }
 
 #[derive(Debug)]
@@ -51,6 +66,7 @@ pub struct App {
     config: Mutable<Config>,
     players: MutableVec<Arc<Player>>,
     cards: MutableVec<Arc<Card>>,
+    player_in_turn: Mutable<usize>,
 }
 
 impl Default for Config {
@@ -64,24 +80,22 @@ impl Default for Config {
 }
 
 impl Card {
-    fn new(value: usize) -> Self {
+    fn new(value: usize, id: u8) -> Self {
         Card {
+            id,
             value,
-            playable: true,
-            hidden: true,
-            selected: Mutable::new(false),
+            state: Mutable::new(CardState::Hidden),
         }
-    }
-
-    pub fn toggle_selection(card: Arc<Self>) {
-        let prev = card.selected.get_cloned();
-        card.selected.set(!prev);
     }
 }
 
 impl Default for Player {
     fn default() -> Self {
-        Player { score: 0 }
+        Player {
+            id: 0,
+            score: Mutable::new(0u32),
+            state: Mutable::new(PlayerState::Iddle),
+        }
     }
 }
 
@@ -93,7 +107,9 @@ impl App {
 
         for i in 0..cfg.size {
             let ind = i % (cfg.size / 2);
-            cards.lock_mut().push_cloned(Arc::new(Card::new(ind)));
+            cards
+                .lock_mut()
+                .push_cloned(Arc::new(Card::new(ind, i as u8)));
         }
 
         for _ in 0..cfg.players {
@@ -105,11 +121,17 @@ impl App {
             config: Mutable::new(cfg),
             players,
             cards,
+            player_in_turn: Mutable::new(0),
         })
     }
 
     pub fn state(&self) -> impl Signal<Item = GameStates> {
         self.state.signal()
+    }
+
+    pub fn go_play(app: Arc<Self>) {
+        app.state.replace_with(|_state| GameStates::Playing);
+        app.players.lock_mut()[0].state.set(PlayerState::Playing);
     }
 
     fn render(app: Arc<Self>) -> Dom {
@@ -130,9 +152,10 @@ impl App {
 
         for i in 0..size {
             let ind = i % (size / 2);
-            app.cards.lock_mut().push_cloned(Arc::new(Card::new(ind)));
+            app.cards
+                .lock_mut()
+                .push_cloned(Arc::new(Card::new(ind, i as u8)));
         }
-
     }
 
     pub fn change_players(app: Arc<Self>, size: u8) {
@@ -140,8 +163,43 @@ impl App {
         app.players.lock_mut().clear();
 
         for _ in 0..size {
-            app.players.lock_mut().push_cloned(Arc::new(Player::default()));
+            app.players
+                .lock_mut()
+                .push_cloned(Arc::new(Player::default()));
         }
+    }
+
+    pub fn game_play(app: Arc<Self>, c: Arc<Card>) {
+        let all_cards = app.cards.lock_ref();
+        let selected_cards = all_cards
+            .iter()
+            .filter(|cc| cc.id != c.id && cc.state.get() == CardState::Selected);
+
+        if selected_cards.clone().count() > 0 {
+            for curr_card in selected_cards {
+                if curr_card.value == c.value {
+                    App::set_card_shown(c.clone());
+                    App::set_card_shown(curr_card.clone());
+                } else {
+                    App::set_card_hidden(c.clone());
+                    App::set_card_hidden(curr_card.clone());
+                }
+            }
+        }
+    }
+
+    pub fn card_selection(_app: Arc<Self>, card: Arc<Card>) {
+        if card.state.get() == CardState::Hidden {
+            card.state.set(CardState::Selected);
+        }
+    }
+
+    pub fn set_card_shown(card: Arc<Card>) {
+        card.state.set(CardState::Shown);
+    }
+
+    pub fn set_card_hidden(card: Arc<Card>) {
+        card.state.set(CardState::Hidden);
     }
 }
 
@@ -203,11 +261,24 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                             clone!(
                                 app => move |card| {
                                     let c = card.clone();
+                                    // TODO:  implement timeout for auto-resetting selection
+                                    // gloo_timers -> enable / disable selection
                                     html!{"div", {
                                         .class("cell")
-                                        .class_signal("selected", c.selected.signal_cloned().map(|selected| selected))
+                                        .class_signal("selected", c.state.signal().map(|s| s == CardState::Selected ))
+                                        .class_signal("shown", c.state.signal().map(|s| s == CardState::Shown))
+                                        .future(
+                                            c.state.signal_cloned().for_each(clone!(c, app => move |change| {
+                                                if change == CardState::Selected {
+                                                    App::game_play(app.clone(), c.clone());
+                                                }
+                                               ready(())
+                                            }))
+                                        )
                                         .event(clone!(app => move |_:events::Click| {
-                                            Card::toggle_selection(c.clone());
+                                            if c.state.get()  != CardState::Shown {
+                                                App::card_selection(app.clone(), c.clone());
+                                            }
                                         }))
                                         .children(&mut [
                                             html!{"div", {
@@ -215,7 +286,7 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                                                     .children(&mut[
                                                         html!{"span", {
                                                             .class("card_value")
-                                                            .text(&format!("{}", card.value)) 
+                                                            .text(&format!("{}", card.value))
 
                                                         }}
                                                     ])
