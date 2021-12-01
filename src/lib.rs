@@ -9,6 +9,8 @@ use rand::{thread_rng, Rng};
 use std::default::Default;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
+use gloo_timers::future::TimeoutFuture;
+use wasm_bindgen_futures::spawn_local;
 
 mod components;
 mod containers;
@@ -17,6 +19,8 @@ mod containers;
 pub enum CardState {
     Hidden,
     Shown,
+    Wrong,
+    Fine,
     Selected,
 }
 
@@ -170,6 +174,8 @@ impl App {
     }
 
     pub fn game_play(app: Arc<Self>, c: Arc<Card>) {
+        // let ccard = c.clone();
+
         let all_cards = app.cards.lock_ref();
         let selected_cards = all_cards
             .iter()
@@ -178,11 +184,29 @@ impl App {
         if selected_cards.clone().count() > 0 {
             for curr_card in selected_cards {
                 if curr_card.value == c.value {
-                    App::set_card_shown(c.clone());
-                    App::set_card_shown(curr_card.clone());
+
+                    c.state.set(CardState::Fine);
+                    curr_card.state.set(CardState::Fine);
+
+                    let c_fine = c.clone();
+                    let ccur = curr_card.clone();
+                    spawn_local(async move {
+                        TimeoutFuture::new(500).await;
+                        App::set_card_shown(c_fine.clone());
+                        App::set_card_shown(ccur.clone());
+                    });
                 } else {
-                    App::set_card_hidden(c.clone());
-                    App::set_card_hidden(curr_card.clone());
+                    let cc = c.clone();
+                    let c_card = curr_card.clone();
+
+                    cc.state.set(CardState::Wrong);
+                    c_card.state.set(CardState::Wrong);
+
+                    spawn_local(async move {
+                        TimeoutFuture::new(500).await;
+                        App::set_card_hidden(cc.clone());
+                        App::set_card_hidden(c_card.clone());
+                    });
                 }
             }
         }
@@ -198,10 +222,7 @@ impl App {
         card.state.set(CardState::Shown);
     }
 
-    pub fn set_card_hidden(card: Arc<Card>) {
-        card.state.set(CardState::Hidden);
-    }
-}
+    pub fn set_card_hidden(card: Arc<Card>) { card.state.set(CardState::Hidden); } }
 
 pub fn render_cards(app: Arc<App>) -> Dom {
     let base = "game";
@@ -265,7 +286,9 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                                     // gloo_timers -> enable / disable selection
                                     html!{"div", {
                                         .class("cell")
-                                        .class_signal("selected", c.state.signal().map(|s| s == CardState::Selected ))
+                                        .class_signal("selected", c.state.signal().map(|s| s == CardState::Selected || s == CardState::Wrong))
+                                        .class_signal("wrong", c.state.signal().map(|s| s == CardState::Wrong ))
+                                        .class_signal("fine", c.state.signal().map(|s| s == CardState::Fine))
                                         .class_signal("shown", c.state.signal().map(|s| s == CardState::Shown))
                                         .future(
                                             c.state.signal_cloned().for_each(clone!(c, app => move |change| {
