@@ -1,3 +1,4 @@
+use futures::future::ready;
 use dominator::{clone, events, html, Dom};
 use futures_signals::{
     signal::SignalExt,
@@ -79,6 +80,12 @@ impl InitialScreen {
                             }},
                             html!{"div", {
                                 .class(format!("{}_options", base))
+                                .future(
+                                            app.config.signal_cloned().for_each(clone!( app => move |change| {
+                                                App::add_players(app.clone());
+                                               ready(())
+                                            }))
+                                        )
                                 .children(&mut[
                                     html!{"button", {
                                         .class("btn")

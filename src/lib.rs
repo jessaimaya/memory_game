@@ -46,7 +46,7 @@ pub enum GameTheme {
 #[derive(Clone, Debug)]
 pub struct Config {
     pub theme: GameTheme,
-    pub players: u8,
+    pub players: usize,
     pub size: usize,
 }
 
@@ -59,9 +59,10 @@ pub struct Card {
 
 #[derive(Clone, Debug)]
 pub struct Player {
-    id: u8,
+    id: usize,
     score: Mutable<u32>,
     state: Mutable<PlayerState>,
+    moves: Mutable<usize>,
 }
 
 #[derive(Debug)]
@@ -93,12 +94,13 @@ impl Card {
     }
 }
 
-impl Default for Player {
-    fn default() -> Self {
+impl Player {
+    fn new(id: usize) -> Self {
         Player {
-            id: 0,
+            id,
             score: Mutable::new(0u32),
             state: Mutable::new(PlayerState::Iddle),
+            moves: Mutable::new(0),
         }
     }
 }
@@ -116,9 +118,8 @@ impl App {
                 .push_cloned(Arc::new(Card::new(ind, i as u8)));
         }
 
-        for _ in 0..cfg.players {
-            players.lock_mut().push_cloned(Arc::new(Player::default()));
-        }
+        players.lock_mut().push_cloned(Arc::new(Player::new(0)));
+
 
         Arc::new(Self {
             state: Mutable::new(GameStates::Initial),
@@ -136,6 +137,16 @@ impl App {
     pub fn go_play(app: Arc<Self>) {
         app.state.replace_with(|_state| GameStates::Playing);
         app.players.lock_mut()[0].state.set(PlayerState::Playing);
+    }
+
+    pub fn add_players(app: Arc<Self>) {
+        let num = app.config.lock_ref().players;
+        let mut players = vec![];
+        for i in 0..num {
+            players.push(Arc::new(Player::new(i)));
+        } 
+        app.players.lock_mut().clear();
+        app.players.lock_mut().replace_cloned(players);
     }
 
     fn render(app: Arc<Self>) -> Dom {
@@ -162,24 +173,13 @@ impl App {
         }
     }
 
-    pub fn change_players(app: Arc<Self>, size: u8) {
-        app.config.lock_mut().players = size;
-        app.players.lock_mut().clear();
-
-        for _ in 0..size {
-            app.players
-                .lock_mut()
-                .push_cloned(Arc::new(Player::default()));
-        }
-    }
-
     pub fn game_play(app: Arc<Self>, c: Arc<Card>) {
-        // let ccard = c.clone();
-
         let all_cards = app.cards.lock_ref();
         let selected_cards = all_cards
             .iter()
             .filter(|cc| cc.id != c.id && cc.state.get() == CardState::Selected);
+        let players = app.players.lock_mut();
+        let player = players.iter().filter(|p| p.id == app.player_in_turn.get());
 
         if selected_cards.clone().count() > 0 {
             for curr_card in selected_cards {
@@ -202,6 +202,7 @@ impl App {
                     cc.state.set(CardState::Wrong);
                     c_card.state.set(CardState::Wrong);
 
+
                     spawn_local(async move {
                         TimeoutFuture::new(500).await;
                         App::set_card_hidden(cc.clone());
@@ -209,6 +210,7 @@ impl App {
                     });
                 }
             }
+            player.for_each(|data| data.moves.set(data.moves.get() + 1));
         }
     }
 
@@ -282,8 +284,6 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                             clone!(
                                 app => move |card| {
                                     let c = card.clone();
-                                    // TODO:  implement timeout for auto-resetting selection
-                                    // gloo_timers -> enable / disable selection
                                     html!{"div", {
                                         .class("cell")
                                         .class_signal("selected", c.state.signal().map(|s| s == CardState::Selected || s == CardState::Wrong))
@@ -320,8 +320,21 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                             )
                         )
                     )
-                }}
+                }},
 
+                html!{"div", {
+                    .class(format!("{}_players",base))                     
+                    .children(&mut [
+                        html!{"ul", {
+                            .class("players_list")
+                            .children_signal_vec(app.players.signal_vec_cloned()
+                                .map(clone!(app => move |p| html!{"li", {
+                                    .class("player_list__item")
+                                    .text(&format!("Player: {}", p.id + 1))
+                                }})))
+                        }}
+                    ])
+                }}
             ])
     }}
 }
