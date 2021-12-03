@@ -63,6 +63,8 @@ pub struct Player {
     score: Mutable<u32>,
     state: Mutable<PlayerState>,
     moves: Mutable<usize>,
+    time: Option<Mutable<f64>>,
+    points: Mutable<bool>,
 }
 
 #[derive(Debug)]
@@ -101,6 +103,8 @@ impl Player {
             score: Mutable::new(0u32),
             state: Mutable::new(PlayerState::Iddle),
             moves: Mutable::new(0),
+            time: None,
+            points: Mutable::new(false),
         }
     }
 }
@@ -178,15 +182,31 @@ impl App {
         let selected_cards = all_cards
             .iter()
             .filter(|cc| cc.id != c.id && cc.state.get() == CardState::Selected);
+        let hidden = all_cards.iter().filter(|cc| cc.state.get() == CardState::Hidden);
         let players = app.players.lock_mut();
         let player = players.iter().filter(|p| p.id == app.player_in_turn.get());
+
+        if hidden.count() == 0 {
+            web_sys::console::log_1(&format!("GameOVER").into());
+        }
 
         if selected_cards.clone().count() > 0 {
             for curr_card in selected_cards {
                 if curr_card.value == c.value {
-
+                    
                     c.state.set(CardState::Fine);
                     curr_card.state.set(CardState::Fine);
+
+                    player.clone().for_each(|p| {
+                        p.points.set(true);
+                        p.score.set(p.score.get() + 1);
+                        let sp = p.clone();
+                        spawn_local(async move {
+                            TimeoutFuture::new(300).await;
+                            sp.points.set(false);
+                        });
+
+                    });
 
                     let c_fine = c.clone();
                     let ccur = curr_card.clone();
@@ -202,6 +222,8 @@ impl App {
                     cc.state.set(CardState::Wrong);
                     c_card.state.set(CardState::Wrong);
 
+                    app.player_in_turn.set(
+                        (app.player_in_turn.get() + 1 ) % app.config.lock_ref().players);
 
                     spawn_local(async move {
                         TimeoutFuture::new(500).await;
@@ -327,11 +349,38 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                     .children(&mut [
                         html!{"ul", {
                             .class("players_list")
+                            .class_signal("one_p", app.config.signal_cloned().map(|cfg| cfg.players == 1))
+                            .class_signal("two_p", app.config.signal_cloned().map(|cfg| cfg.players == 2))
+                            .class_signal("three_p", app.config.signal_cloned().map(|cfg| cfg.players == 3))
+                            .class_signal("four_p", app.config.signal_cloned().map(|cfg| cfg.players == 4))
                             .children_signal_vec(app.players.signal_vec_cloned()
                                 .map(clone!(app => move |p| html!{"li", {
-                                    .class("player_list__item")
-                                    .text(&format!("Player: {}", p.id + 1))
+                                    .class_signal("in_turn", app.player_in_turn.signal_cloned().map(clone!( p => move |s| s == p.id)))
+                                    .class("players_list__item")
+                                    .class("animate__animated")
+                                    .children(&mut[
+                                        html!{"p", {
+                                            .class("player-name")
+                                            .text(&format!("Player{}", p.id + 1))
+                                        }},
+                                        html!{"p", {
+                                            .class_signal("animate__bounceIn", p.points.signal_cloned().map(|s| s))
+                                            .class("player-score")
+                                            .class("animate__animated")
+                                            .text_signal( p.score.signal().map(|s| format!("{}", s)))
+                                        }}
+                                    ])
                                 }})))
+                            .children_signal_vec(app.players.signal_vec_cloned()
+                                 .map(clone!(app => move |p| html!{"p",{
+                                    .children(&mut[
+                                        html!{"span",{ 
+                                            .visible_signal(app.player_in_turn.signal_cloned().map(clone!(p => move |s| s == p.id)))
+                                            .text("Current turn")
+
+                                        }}
+                                     ])
+                                 }})))
                         }}
                     ])
                 }}

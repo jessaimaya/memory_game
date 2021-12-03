@@ -54,6 +54,11 @@ h3 {
     background: $blue_200;
 }
 
+.app {
+    height: 100vh;
+    overflow: hidden;
+}
+
 // UI
 .btn {
     font-size: 1.5rem;
@@ -139,7 +144,8 @@ h3 {
     display: flex;
     margin: 0 auto;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
+    height: 100%;
 
     &_top {
         width: 100%;
@@ -172,6 +178,79 @@ h3 {
             grid-template-rows: repeat(6, 1fr);
             & .card_value {
                 font-size: 44px;
+            }
+        }
+    }
+
+    &_players {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    & .players_list {
+        display: grid;
+        list-style: none;
+        gap: 1rem;
+        width: 100%;
+        justify-items: center;
+        &.one_p {
+            grid-template-columns: 1fr;
+        }
+        &.two_p {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        &.three_p {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        &.four_p {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        &__item {
+            display: flex;
+            background: $gray_100;
+            border-radius: 10px;
+            padding: 0 1rem;
+            &.in_turn {
+                background: $orange;
+                animation: bounceIn;
+                animation-duration: 1s;
+                &:after {
+                    border-bottom: solid 10px $orange;
+                    border-left: solid 10px transparent;
+                    border-right: solid 10px transparent;}
+                }
+            &.right {
+                background: $green;
+            }
+            &.in-turn {
+                background: $orange;
+                & .player-name,
+                & .player-score {
+                    color: $white_100; 
+                }
+            }
+
+            & .player-name {
+                color: $gray_200;
+                text-align: left;
+            }
+            & .player-score {
+                color: $gray_300;
+                text-align: right;
+                padding-left: 1rem;
+            }
+            position:relative;
+
+            &:after {
+                content:'';
+                position: absolute;
+                bottom: 100%;
+                left: 0;
+                right: 0;
+                margin: 0 auto;
+                width: 0;
+                height: 0;
+                border:none;
             }
         }
     }
@@ -256,3 +335,4 @@ h3 {
   50% { transform: scale(1.3, 0.9); }
   75% { transform: scale(0.95, 1.05); }
 }
+
