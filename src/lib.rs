@@ -6,6 +6,7 @@ use futures_signals::{
     signal_vec::{MutableVec, SignalVecExt},
 };
 use rand::{thread_rng, Rng};
+use rand::seq::SliceRandom;
 use std::default::Default;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
@@ -134,6 +135,30 @@ impl App {
         })
     }
 
+    pub fn restart(app: Arc<Self>) {
+        let cfg = app.config.lock_ref();
+        let mut cards = vec![];
+        let mut players = vec![];
+        
+        for i in 0..cfg.size {
+            let ind = i % (cfg.size / 2);
+            cards
+                .push(Arc::new(Card::new(ind, i as u8)));
+        }
+
+        
+       for i in 0..cfg.players{
+            players.push(Arc::new(Player::new(i)));
+        } 
+ 
+        app.cards.lock_mut().clear();
+        // let mut r = thread_rng();
+        // let sh = cards.shuffle(&mut r); 
+        app.cards.lock_mut().replace_cloned(cards);
+        app.players.lock_mut().replace_cloned(players);
+ 
+    }
+
     pub fn state(&self) -> impl Signal<Item = GameStates> {
         self.state.signal()
     }
@@ -152,7 +177,6 @@ impl App {
         app.players.lock_mut().clear();
         app.players.lock_mut().replace_cloned(players);
     }
-
     fn render(app: Arc<Self>) -> Dom {
         let cards = render_cards(app.clone());
 
@@ -193,9 +217,13 @@ impl App {
         if selected_cards.clone().count() > 0 {
             for curr_card in selected_cards {
                 if curr_card.value == c.value {
-                    
-                    c.state.set(CardState::Fine);
-                    curr_card.state.set(CardState::Fine);
+                    let c_c = c.clone(); 
+                    let cur_c = curr_card.clone();
+                    spawn_local(async move {
+                        TimeoutFuture::new(300).await;
+                        c_c.state.set(CardState::Fine);
+                        cur_c.state.set(CardState::Fine);
+                    });
 
                     player.clone().for_each(|p| {
                         p.points.set(true);
@@ -211,24 +239,30 @@ impl App {
                     let c_fine = c.clone();
                     let ccur = curr_card.clone();
                     spawn_local(async move {
-                        TimeoutFuture::new(500).await;
-                        App::set_card_shown(c_fine.clone());
-                        App::set_card_shown(ccur.clone());
+                        TimeoutFuture::new(750).await;
+                        c_fine.state.set(CardState::Shown);
+                        ccur.state.set(CardState::Shown);
                     });
                 } else {
                     let cc = c.clone();
                     let c_card = curr_card.clone();
+                    
+                    let cc_card = curr_card.clone();
+                    let c_cc = c.clone();
 
-                    cc.state.set(CardState::Wrong);
-                    c_card.state.set(CardState::Wrong);
+                    spawn_local(async move {
+                        TimeoutFuture::new(100).await;
+                        c_cc.state.set(CardState::Wrong);
+                        cc_card.state.set(CardState::Wrong);
+                    });
 
                     app.player_in_turn.set(
                         (app.player_in_turn.get() + 1 ) % app.config.lock_ref().players);
 
                     spawn_local(async move {
-                        TimeoutFuture::new(500).await;
-                        App::set_card_hidden(cc.clone());
-                        App::set_card_hidden(c_card.clone());
+                        TimeoutFuture::new(1000).await;
+                        cc.state.set(CardState::Hidden);
+                        c_card.state.set(CardState::Hidden);
                     });
                 }
             }
@@ -269,13 +303,19 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                                     .class("btn")
                                     .class("bg_orange")
                                     .text("Restart")
-                                                                      }},
+                                    .event(clone!(app => move |_: events::Click| {
+                                        App::restart(app.clone());
+                                        app.state.replace_with(|_state| GameStates::Playing);
+                                    }))
+
+                                }},
 
                                 html!{"button", {
                                     .class("btn")
                                     .class("bg_gray_100")
                                     .text("New Game")
                                     .event(clone!(app => move |_: events::Click| {
+                                        App::restart(app.clone());
                                         app.state.replace_with(|_state| GameStates::Initial);
                                     }))
                                 }},
@@ -297,7 +337,7 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                         app.cards.signal_vec_cloned()
                         .sort_by_cloned(|_,_| {
                             let mut rng = thread_rng();
-                            match rng.gen_bool(1.0 / 3.0) {
+                            match rng.gen_bool(0.5) {
                                 true => Ordering::Less,
                                 false => Ordering::Greater,
                             }
@@ -308,10 +348,15 @@ pub fn render_cards(app: Arc<App>) -> Dom {
                                     let c = card.clone();
                                     html!{"div", {
                                         .class("cell")
+                                        .class("animate__faster")
+                                        .class("animate__animated")
                                         .class_signal("selected", c.state.signal().map(|s| s == CardState::Selected || s == CardState::Wrong))
+                                        .class_signal("animate__flip", c.state.signal().map(|s| s == CardState::Selected ))
                                         .class_signal("wrong", c.state.signal().map(|s| s == CardState::Wrong ))
                                         .class_signal("fine", c.state.signal().map(|s| s == CardState::Fine))
                                         .class_signal("shown", c.state.signal().map(|s| s == CardState::Shown))
+
+                                        .class_signal("animate__flip", c.state.signal().map(|s| s == CardState::Hidden))
                                         .future(
                                             c.state.signal_cloned().for_each(clone!(c, app => move |change| {
                                                 if change == CardState::Selected {
