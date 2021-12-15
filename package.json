@@ -5,7 +5,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "rimraf dist/ && trunk build",
-    "start": "rimraf dist/ && trunk serve"
+    "start": "rimraf dist/ && trunk serve",
+    "heroku-postbuild": ""
   },
   "devDependencies": {
     "postcss-cli": "^9.0.2",
@@ -14,7 +15,12 @@
   },
   "dependencies": {
     "autoprefixer": "^10.4.0",
+    "express": "^4.17.1",
     "postcss": "^8.3.11",
     "sanitize.css": "^13.0.0"
+  },
+  "engines": {
+	"node": ">=6.9.4",
+	"npm": ">=4.4.0"
   }
 }

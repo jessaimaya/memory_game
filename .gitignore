@@ -3,7 +3,6 @@ Cargo.lock
 /node_modules/
 **/*.rs.bk
 /tags/
-/dist/
 tags
 # Logs
 logs
@@ -87,7 +86,6 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
